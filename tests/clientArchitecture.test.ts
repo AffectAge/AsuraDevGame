@@ -17,10 +17,36 @@ describe("client rendering architecture", () => {
     expect(source).not.toMatch(/MeshBuilder\.CreateTube/);
   });
 
+  it("renders terrain with barycentric shader attributes in one batched mesh", async () => {
+    const layerSource = await readFile("client/src/map/render/TerrainMeshLayer.ts", "utf8");
+    const materialSource = await readFile("client/src/map/shaders/terrainMaterial.ts", "utf8");
+    expect(layerSource).toContain('new Mesh("terrain-layer"');
+    expect(layerSource).toContain('setVerticesData("a_barycentric"');
+    expect(layerSource).toContain('setVerticesData("blendColorA"');
+    expect(layerSource).toContain('setVerticesData("blendColorB"');
+    expect(layerSource).toContain('setVerticesData("blendColorC"');
+    expect(layerSource).toContain('setVerticesData("blendCenter"');
+    expect(layerSource).toContain('setVerticesData("blendNoise"');
+    expect(materialSource).toContain("ShaderMaterial");
+    expect(materialSource).toContain('material.setFloat("transitionSoftness", 0.9)');
+    expect(materialSource).toContain("neighborInfluence");
+    expect(materialSource).not.toContain("StandardMaterial");
+  });
+
+  it("renders terrain side walls as one batched vertex-data mesh", async () => {
+    const source = await readFile("client/src/map/render/TerrainSideWallLayer.ts", "utf8");
+    expect(source).toContain('new Mesh("terrain-side-wall-layer"');
+    expect(source).toContain("VertexData");
+    expect(source).toContain("WALL_THRESHOLD");
+    expect(source).not.toMatch(/MeshBuilder\.Create/);
+  });
+
   it("keeps map scene composition split into dedicated camera lighting picking modules", async () => {
     const source = await readFile("client/src/map/scene/createMapScene.ts", "utf8");
     expect(source).toContain("createMapCamera");
     expect(source).toContain("createLighting");
+    expect(source.indexOf("createTerrainMeshLayer")).toBeLessThan(source.indexOf("createTerrainSideWallLayer"));
+    expect(source.indexOf("createTerrainSideWallLayer")).toBeLessThan(source.indexOf("createWaterMeshLayer"));
     expect(source).toContain("MapInputController");
     expect(source).toContain("CameraController");
   });
@@ -50,6 +76,7 @@ describe("client rendering architecture", () => {
   it("keeps primary render materials in shader/material factory modules", async () => {
     const renderFiles = [
       "client/src/map/render/TerrainMeshLayer.ts",
+      "client/src/map/render/TerrainSideWallLayer.ts",
       "client/src/map/render/WaterMeshLayer.ts",
       "client/src/map/render/RegionOverlayLayer.ts",
       "client/src/map/render/RiverMeshLayer.ts",

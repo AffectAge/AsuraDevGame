@@ -35,6 +35,7 @@ async function loadDefaultMap(): Promise<void> {
   const artifact = await generateAndLoadMap();
   const sceneHandle = createMapScene(engine, canvas, artifact, {
     onHover: (tile) => {
+      const worldHeight = tile ? tile.elevation * artifact.renderHints.heightScale : 0;
       debugPanel.textContent = tile
         ? `q=${tile.q} r=${tile.r}
 base=${tile.baseTerrain}
@@ -43,6 +44,9 @@ veg=${tile.vegetation}
 wetland=${tile.wetland}
 biome=${tile.biome}
 elev=${tile.elevation.toFixed(3)}
+heightY=${worldHeight.toFixed(3)}
+heightScale=${artifact.renderHints.heightScale.toFixed(2)}
+waterLevel=${artifact.renderHints.waterLevel.toFixed(3)}
 resources=${tile.resources?.map((resource) => resource.resourceId).join(", ") ?? "none"}`
         : "No tile";
     },

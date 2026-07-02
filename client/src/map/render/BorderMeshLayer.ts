@@ -3,9 +3,9 @@ import type { Scene } from "@babylonjs/core/scene";
 import type { BorderSegment, GeneratedMapArtifact } from "../../../../shared/src/map";
 
 export function createBorderMeshLayer(scene: Scene, artifact: GeneratedMapArtifact): void {
-  createLineSystem(scene, artifact, "coast", new Color3(0.93, 0.88, 0.62), 0.03);
-  createLineSystem(scene, artifact, "region", new Color3(0.15, 0.18, 0.2), 0.02);
-  createLineSystem(scene, artifact, "mapEdge", new Color3(0.05, 0.06, 0.07), 0.025);
+  createLineSystem(scene, artifact, "coast", new Color3(0.78, 0.72, 0.46), 0.026);
+  createLineSystem(scene, artifact, "region", new Color3(0.34, 0.42, 0.31), 0.018);
+  createLineSystem(scene, artifact, "mapEdge", new Color3(0.28, 0.32, 0.26), 0.02);
   createLineSystem(scene, artifact, "river", new Color3(0.2, 0.55, 0.86), 0.025);
 }
 

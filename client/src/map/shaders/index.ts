@@ -4,4 +4,5 @@ export * from "./regionOverlayMaterial";
 export * from "./riverMaterial";
 export * from "./routePreviewMaterial";
 export * from "./terrainMaterial";
+export * from "./terrainSideWallMaterial";
 export * from "./waterMaterial";
