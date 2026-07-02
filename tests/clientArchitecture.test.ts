@@ -38,6 +38,16 @@ describe("client rendering architecture", () => {
     expect(source).toContain('new Mesh("terrain-side-wall-layer"');
     expect(source).toContain("VertexData");
     expect(source).toContain("WALL_THRESHOLD");
+    expect(source).toContain("LAND_CLIFF_THRESHOLD");
+    expect(source).not.toMatch(/MeshBuilder\.Create/);
+  });
+
+  it("renders land elevation terraces as one batched vertex-data mesh", async () => {
+    const source = await readFile("client/src/map/render/TerrainTerraceLayer.ts", "utf8");
+    expect(source).toContain('new Mesh("terrain-terrace-layer"');
+    expect(source).toContain("VertexData");
+    expect(source).toContain("TERRACES_PER_SLOPE");
+    expect(source).toContain("terraceLerp");
     expect(source).not.toMatch(/MeshBuilder\.Create/);
   });
 
@@ -45,8 +55,14 @@ describe("client rendering architecture", () => {
     const source = await readFile("client/src/map/scene/createMapScene.ts", "utf8");
     expect(source).toContain("createMapCamera");
     expect(source).toContain("createLighting");
-    expect(source.indexOf("createTerrainMeshLayer")).toBeLessThan(source.indexOf("createTerrainSideWallLayer"));
-    expect(source.indexOf("createTerrainSideWallLayer")).toBeLessThan(source.indexOf("createWaterMeshLayer"));
+    const terrainCallOrder = [
+      source.indexOf("createTerrainMeshLayer(scene, artifact)"),
+      source.indexOf("createTerrainTerraceLayer(scene, artifact)"),
+      source.indexOf("createTerrainSideWallLayer(scene, artifact)"),
+      source.indexOf("createWaterMeshLayer(scene, artifact)")
+    ];
+    expect(terrainCallOrder.every((index) => index > -1)).toBe(true);
+    expect(terrainCallOrder).toEqual([...terrainCallOrder].sort((a, b) => a - b));
     expect(source).toContain("MapInputController");
     expect(source).toContain("CameraController");
   });
@@ -77,6 +93,7 @@ describe("client rendering architecture", () => {
     const renderFiles = [
       "client/src/map/render/TerrainMeshLayer.ts",
       "client/src/map/render/TerrainSideWallLayer.ts",
+      "client/src/map/render/TerrainTerraceLayer.ts",
       "client/src/map/render/WaterMeshLayer.ts",
       "client/src/map/render/RegionOverlayLayer.ts",
       "client/src/map/render/RiverMeshLayer.ts",

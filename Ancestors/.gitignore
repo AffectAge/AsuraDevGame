@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-client/
+dist-server/
+.vite/
+.cache/
+coverage/
+*.tsbuildinfo
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

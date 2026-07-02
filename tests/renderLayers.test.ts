@@ -7,6 +7,7 @@ import { createRegionOverlayLayer } from "../client/src/map/render/RegionOverlay
 import { createRiverMeshLayer } from "../client/src/map/render/RiverMeshLayer";
 import { createTerrainMeshLayer } from "../client/src/map/render/TerrainMeshLayer";
 import { createTerrainSideWallLayer } from "../client/src/map/render/TerrainSideWallLayer";
+import { createTerrainTerraceLayer } from "../client/src/map/render/TerrainTerraceLayer";
 import { createWaterMeshLayer } from "../client/src/map/render/WaterMeshLayer";
 
 describe("Babylon render layers", () => {
@@ -31,6 +32,7 @@ describe("Babylon render layers", () => {
     });
 
     const terrain = createTerrainMeshLayer(scene, artifact);
+    const terraces = createTerrainTerraceLayer(scene, artifact);
     const sideWalls = createTerrainSideWallLayer(scene, artifact);
     const water = createWaterMeshLayer(scene, artifact);
     const region = createRegionOverlayLayer(scene, artifact);
@@ -44,12 +46,14 @@ describe("Babylon render layers", () => {
     expect(terrain.isVerticesDataPresent("blendColorC")).toBe(true);
     expect(terrain.isVerticesDataPresent("blendCenter")).toBe(true);
     expect(terrain.isVerticesDataPresent("blendNoise")).toBe(true);
+    expect(terraces.getTotalVertices()).toBeGreaterThan(0);
     expect(sideWalls.getTotalVertices()).toBeGreaterThan(0);
     expect(water.getTotalVertices()).toBeGreaterThan(0);
     expect(region.getTotalVertices()).toBeGreaterThan(0);
     expect(river?.getTotalVertices()).toBeGreaterThan(0);
     expect(scene.getMeshByName("coast-borders") ?? scene.getMeshByName("region-borders") ?? scene.getMeshByName("mapEdge-borders")).not.toBeNull();
     expect(scene.getMeshByName("terrain-layer")).not.toBeNull();
+    expect(scene.getMeshByName("terrain-terrace-layer")).not.toBeNull();
     expect(scene.getMeshByName("terrain-side-wall-layer")).not.toBeNull();
     expect(scene.getMeshByName("water-layer")).not.toBeNull();
 

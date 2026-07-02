@@ -6,6 +6,7 @@ import { createTerrainSideWallMaterial } from "../shaders";
 import { tileColor } from "./colors";
 
 const WALL_THRESHOLD = 0.08;
+const LAND_CLIFF_THRESHOLD = 0.35;
 const WATER_BOTTOM_OFFSET = 0.04;
 const WALL_SHADE = 0.58;
 
@@ -44,7 +45,7 @@ function wallBottomY(tile: MapTile, edge: TileEdge, tilesById: Map<string, MapTi
   if (!neighbor || neighbor.isWater) return artifact.renderHints.waterLevel - WATER_BOTTOM_OFFSET;
   const neighborY = neighbor.elevation * artifact.renderHints.heightScale;
   const tileY = tile.elevation * artifact.renderHints.heightScale;
-  return neighborY < tileY ? neighborY : null;
+  return tileY - neighborY >= LAND_CLIFF_THRESHOLD ? neighborY : null;
 }
 
 function appendWallQuad(

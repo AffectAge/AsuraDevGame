@@ -15,6 +15,7 @@ import { createRiverMeshLayer } from "../render/RiverMeshLayer";
 import { RoutePreviewLayer } from "../render/RoutePreviewLayer";
 import { createTerrainMeshLayer } from "../render/TerrainMeshLayer";
 import { createTerrainSideWallLayer } from "../render/TerrainSideWallLayer";
+import { createTerrainTerraceLayer } from "../render/TerrainTerraceLayer";
 import { createWaterMeshLayer } from "../render/WaterMeshLayer";
 import { createLighting } from "./createLighting";
 import { createMapCamera } from "./createMapCamera";
@@ -32,6 +33,7 @@ export function createMapScene(engine: Engine, canvas: HTMLCanvasElement, artifa
 
   createLighting(scene);
   createTerrainMeshLayer(scene, artifact);
+  createTerrainTerraceLayer(scene, artifact);
   createTerrainSideWallLayer(scene, artifact);
   createWaterMeshLayer(scene, artifact);
   createRegionOverlayLayer(scene, artifact);
