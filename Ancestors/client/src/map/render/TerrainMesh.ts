@@ -6,8 +6,10 @@ import {
   HEX_CORNERS,
   SOLID_FACTOR,
   TERRACE_STEPS,
+  cellColors,
   offsetToWorld,
   terraceLerp,
+  type CellColorId,
   type EdgeType,
   type HexCell,
   type HexDirection,
@@ -21,12 +23,21 @@ type MeshBuffers = {
   positions: number[];
   indices: number[];
   colors: number[];
+  terrainIndices: number[];
 };
 
 const EDGE_DIRECTIONS: readonly HexDirection[] = [5, 0, 1, 2, 3, 4];
+const TERRAIN_TEXTURE_INDEX_BY_COLOR: Record<CellColorId, number> = {
+  yellow: 0,
+  green: 1,
+  blue: 2,
+  orange: 3,
+  red: 4
+};
+const SPLAT_1: Rgba = { r: 1, g: 0, b: 0, a: 1 };
 
 export function createTerrainMesh(scene: Scene, artifact: HexGridArtifact, lookup: MapLookup): Mesh {
-  const buffers: MeshBuffers = { positions: [], indices: [], colors: [] };
+  const buffers: MeshBuffers = { positions: [], indices: [], colors: [], terrainIndices: [] };
 
   for (const cell of artifact.cells) {
     triangulateCell(artifact, lookup, cell, buffers);
@@ -41,6 +52,7 @@ export function createTerrainMesh(scene: Scene, artifact: HexGridArtifact, looku
   vertexData.colors = buffers.colors;
   vertexData.normals = normals;
   vertexData.applyToMesh(mesh);
+  mesh.setVerticesData("terrainIndices", buffers.terrainIndices, false, 3);
   return mesh;
 }
 
@@ -250,24 +262,136 @@ function edgeTypeBetween(a: HexCell, b: HexCell): EdgeType {
 
 function addTriangle(buffers: MeshBuffers, v1: Vec3, v2: Vec3, v3: Vec3, c1: Rgba, c2: Rgba, c3: Rgba): void {
   const baseIndex = buffers.positions.length / 3;
-  pushVertex(buffers, v1, c1);
-  pushVertex(buffers, v2, c2);
-  pushVertex(buffers, v3, c3);
+  const terrainIndices = primitiveTerrainIndices([c1, c2, c3]);
+  pushVertex(buffers, v1, splatWeights(c1, terrainIndices), terrainIndices);
+  pushVertex(buffers, v2, splatWeights(c2, terrainIndices), terrainIndices);
+  pushVertex(buffers, v3, splatWeights(c3, terrainIndices), terrainIndices);
   buffers.indices.push(baseIndex, baseIndex + 1, baseIndex + 2);
 }
 
 function addQuad(buffers: MeshBuffers, v1: Vec3, v2: Vec3, v3: Vec3, v4: Vec3, c1: Rgba, c2: Rgba, c3: Rgba, c4: Rgba): void {
   const baseIndex = buffers.positions.length / 3;
-  pushVertex(buffers, v1, c1);
-  pushVertex(buffers, v2, c2);
-  pushVertex(buffers, v3, c3);
-  pushVertex(buffers, v4, c4);
+  const terrainIndices = primitiveTerrainIndices([c1, c2, c3, c4]);
+  pushVertex(buffers, v1, splatWeights(c1, terrainIndices), terrainIndices);
+  pushVertex(buffers, v2, splatWeights(c2, terrainIndices), terrainIndices);
+  pushVertex(buffers, v3, splatWeights(c3, terrainIndices), terrainIndices);
+  pushVertex(buffers, v4, splatWeights(c4, terrainIndices), terrainIndices);
   buffers.indices.push(baseIndex, baseIndex + 2, baseIndex + 1, baseIndex + 1, baseIndex + 2, baseIndex + 3);
 }
 
-function pushVertex(buffers: MeshBuffers, vertex: Vec3, color: Rgba): void {
+function pushVertex(buffers: MeshBuffers, vertex: Vec3, color: Rgba, terrainIndices: readonly [number, number, number]): void {
   buffers.positions.push(vertex.x, vertex.y, vertex.z);
   buffers.colors.push(color.r, color.g, color.b, color.a);
+  buffers.terrainIndices.push(terrainIndices[0], terrainIndices[1], terrainIndices[2]);
+}
+
+function primitiveTerrainIndices(colors: readonly Rgba[]): [number, number, number] {
+  const result: number[] = [];
+
+  for (const color of colors) {
+    const index = terrainIndexFromColor(color);
+    if (!result.includes(index)) {
+      result.push(index);
+    }
+    if (result.length === 3) break;
+  }
+
+  while (result.length < 3) {
+    result.push(result[0] ?? 0);
+  }
+
+  return [result[0], result[1], result[2]];
+}
+
+function terrainIndexFromColor(color: Rgba): number {
+  let bestId: CellColorId = "green";
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const id of Object.keys(cellColors) as CellColorId[]) {
+    const candidate = cellColors[id];
+    const distance = squaredDistance(color, candidate);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestId = id;
+    }
+  }
+
+  return TERRAIN_TEXTURE_INDEX_BY_COLOR[bestId];
+}
+
+function splatWeights(color: Rgba, terrainIndices: readonly [number, number, number]): Rgba {
+  const terrainColors = terrainIndices.map((terrainIndex) => colorForTerrainIndex(terrainIndex)) as [Rgba, Rgba, Rgba];
+
+  if (terrainIndices[0] === terrainIndices[1] && terrainIndices[0] === terrainIndices[2]) {
+    return SPLAT_1;
+  }
+
+  if (terrainIndices[1] === terrainIndices[2]) {
+    const t = projectOnLine(color, terrainColors[0], terrainColors[1]);
+    return { r: 1 - t, g: t, b: 0, a: 1 };
+  }
+
+  const weights = barycentricFromColor(color, terrainColors);
+  return { r: weights[0], g: weights[1], b: weights[2], a: 1 };
+}
+
+function colorForTerrainIndex(terrainIndex: number): Rgba {
+  const id = (Object.keys(TERRAIN_TEXTURE_INDEX_BY_COLOR) as CellColorId[]).find((candidate) => TERRAIN_TEXTURE_INDEX_BY_COLOR[candidate] === terrainIndex) ?? "green";
+  return toRgba(cellColors[id]);
+}
+
+function projectOnLine(color: Rgba, start: Rgba, end: Rgba): number {
+  const vx = end.r - start.r;
+  const vy = end.g - start.g;
+  const vz = end.b - start.b;
+  const lengthSquared = vx * vx + vy * vy + vz * vz;
+  if (lengthSquared <= 0.000001) return 0;
+  const t = ((color.r - start.r) * vx + (color.g - start.g) * vy + (color.b - start.b) * vz) / lengthSquared;
+  return clamp01(t);
+}
+
+function barycentricFromColor(color: Rgba, terrainColors: readonly [Rgba, Rgba, Rgba]): [number, number, number] {
+  const [a, b, c] = terrainColors;
+  const v0 = { x: b.r - a.r, y: b.g - a.g, z: b.b - a.b };
+  const v1 = { x: c.r - a.r, y: c.g - a.g, z: c.b - a.b };
+  const v2 = { x: color.r - a.r, y: color.g - a.g, z: color.b - a.b };
+  const d00 = dot(v0, v0);
+  const d01 = dot(v0, v1);
+  const d11 = dot(v1, v1);
+  const d20 = dot(v2, v0);
+  const d21 = dot(v2, v1);
+  const denominator = d00 * d11 - d01 * d01;
+
+  if (Math.abs(denominator) <= 0.000001) {
+    const t = projectOnLine(color, a, b);
+    return [1 - t, t, 0];
+  }
+
+  const v = (d11 * d20 - d01 * d21) / denominator;
+  const w = (d00 * d21 - d01 * d20) / denominator;
+  const u = 1 - v - w;
+  return normalizeWeights([clamp01(u), clamp01(v), clamp01(w)]);
+}
+
+function normalizeWeights(weights: [number, number, number]): [number, number, number] {
+  const total = weights[0] + weights[1] + weights[2];
+  if (total <= 0.000001) return [1, 0, 0];
+  return [weights[0] / total, weights[1] / total, weights[2] / total];
+}
+
+function squaredDistance(a: Rgba, b: { r: number; g: number; b: number }): number {
+  const r = a.r - b.r;
+  const g = a.g - b.g;
+  const blue = a.b - b.b;
+  return r * r + g * g + blue * blue;
+}
+
+function dot(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
 function lerpVec3(a: Vec3, b: Vec3, t: number): Vec3 {

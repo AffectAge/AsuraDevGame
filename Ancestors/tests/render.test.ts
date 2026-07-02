@@ -3,6 +3,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { describe, expect, it } from "vitest";
 import { MapLookup } from "../client/src/map/data/MapLookup";
 import { createTerrainMesh } from "../client/src/map/render/TerrainMesh";
+import { createTerrainMaterial } from "../client/src/map/render/terrainMaterial";
 import { generateMap } from "../server/src/map/generateMap";
 import { HEX_CORNERS, neighborOffset, offsetToWorld } from "../shared/src";
 
@@ -17,7 +18,20 @@ describe("Babylon terrain rendering", () => {
     expect(mesh.getTotalVertices()).toBeGreaterThan(0);
     expect(mesh.isVerticesDataPresent("position")).toBe(true);
     expect(mesh.isVerticesDataPresent("color")).toBe(true);
+    expect(mesh.isVerticesDataPresent("terrainIndices")).toBe(true);
     expect(scene.meshes.filter((candidate) => candidate.name === "hex-terrain")).toHaveLength(1);
+
+    scene.dispose();
+    engine.dispose();
+  });
+
+  it("uses a shader terrain material for texture atlas blending", () => {
+    const engine = new NullEngine();
+    const scene = new Scene(engine);
+    const material = createTerrainMaterial(scene);
+
+    expect(material.name).toBe("hex-terrain-texture-material");
+    expect(material.getClassName()).toBe("ShaderMaterial");
 
     scene.dispose();
     engine.dispose();

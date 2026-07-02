@@ -1,10 +1,11 @@
-import { ArcRotateCamera, Color3, DirectionalLight, HemisphericLight, StandardMaterial, Vector3 } from "@babylonjs/core";
+import { ArcRotateCamera, Color3, DirectionalLight, HemisphericLight, Vector3 } from "@babylonjs/core";
 import { Scene } from "@babylonjs/core/scene";
 import type { Engine } from "@babylonjs/core/Engines/engine";
 import type { HexCell, HexGridArtifact } from "../../../../shared/src";
 import { MapLookup } from "../data/MapLookup";
 import { pickCellFromPointer } from "../hex/picking";
 import { createTerrainMesh } from "../render/TerrainMesh";
+import { createTerrainMaterial } from "../render/terrainMaterial";
 
 type SceneCallbacks = {
   onHover(cell: HexCell | null): void;
@@ -31,12 +32,7 @@ export function createAncestorsScene(engine: Engine, canvas: HTMLCanvasElement, 
 
   const lookup = new MapLookup(artifact);
   const terrain = createTerrainMesh(scene, artifact, lookup);
-  const material = new StandardMaterial("hex-terrain-material", scene);
-  material.diffuseColor = new Color3(1, 1, 1);
-  material.ambientColor = new Color3(0.72, 0.72, 0.72);
-  material.specularColor = new Color3(0.04, 0.04, 0.04);
-  material.backFaceCulling = false;
-  terrain.material = material;
+  terrain.material = createTerrainMaterial(scene);
 
   const pointerObserver = scene.onPointerObservable.add(() => {
     callbacks.onHover(pickCellFromPointer(scene, lookup));
